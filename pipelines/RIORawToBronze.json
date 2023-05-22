@@ -1,0 +1,147 @@
+{
+    "name": "RIORawToBronze",
+    "properties": {
+        "activities": [
+            {
+                "name": "LookupTableList",
+                "type": "Lookup",
+                "dependsOn": [
+                    {
+                        "activity": "CleanBronzeFolder",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlServerSource",
+                        "sqlReaderQuery": "SELECT t.TABLE_NAME, t.TABLE_SCHEMA, k.COLUMN_NAME\r\nFROM INFORMATION_SCHEMA.TABLES t \r\nLEFT JOIN information_schema.table_constraints tc ON t.TABLE_NAME = tc.TABLE_NAME\r\n\t\t\t\t\t\t\t\t\t\t\t\t AND t.TABLE_SCHEMA = tc.TABLE_SCHEMA\r\nLEFT JOIN information_schema.key_column_usage k on k.CONSTRAINT_NAME = tc.CONSTRAINT_NAME\r\n\t\t\t\t\t\t\t\t\t\t\t   AND k.TABLE_SCHEMA = tc.TABLE_SCHEMA\r\n\t\t\t\t\t\t\t\t\t\t\t   AND k.TABLE_NAME = tc.TABLE_NAME\r\nWHERE t.table_schema= 'dbo'\r\n  --AND t.table_name='Episodes'\r\n  AND t.TABLE_TYPE = 'BASE TABLE'\r\n  AND tc.constraint_type='PRIMARY KEY'",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "RIORawSource",
+                        "type": "DatasetReference"
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "IterateSQLTables",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "LookupTableList",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('LookupTableList').output.value",
+                        "type": "Expression"
+                    },
+                    "activities": [
+                        {
+                            "name": "Copy data",
+                            "type": "Copy",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "SqlServerSource",
+                                    "sqlReaderQuery": {
+                                        "value": "SELECT * FROM [@{item().TABLE_SCHEMA}].[@{item().TABLE_NAME}]",
+                                        "type": "Expression"
+                                    },
+                                    "queryTimeout": "02:00:00",
+                                    "partitionOption": "None"
+                                },
+                                "sink": {
+                                    "type": "ParquetSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "ParquetWriteSettings"
+                                    }
+                                },
+                                "enableStaging": false
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "RIORawSource",
+                                    "type": "DatasetReference"
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "RIOParquetBronzeSink",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "TableName": {
+                                            "value": "@concat(item().TABLE_NAME,'.','parquet')",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "CleanBronzeFolder",
+                "type": "Delete",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataset": {
+                        "referenceName": "RIOParquetBronzeSource",
+                        "type": "DatasetReference"
+                    },
+                    "logStorageSettings": {
+                        "linkedServiceName": {
+                            "referenceName": "ADLSLinkedServiceViaMSI",
+                            "type": "LinkedServiceReference"
+                        }
+                    },
+                    "enableLogging": true,
+                    "storeSettings": {
+                        "type": "AzureBlobFSReadSettings",
+                        "recursive": true,
+                        "enablePartitionDiscovery": false
+                    }
+                }
+            }
+        ],
+        "annotations": [],
+        "lastPublishTime": "2023-05-14T12:22:31Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
