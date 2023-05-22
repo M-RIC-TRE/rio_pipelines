@@ -1,0 +1,123 @@
+{
+    "name": "RIOOnPremSHIRIngestion",
+    "properties": {
+        "activities": [
+            {
+                "name": "LookupTableList",
+                "type": "Lookup",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlServerSource",
+                        "sqlReaderQuery": "SELECT t.TABLE_NAME, t.TABLE_SCHEMA, k.COLUMN_NAME\r\nFROM INFORMATION_SCHEMA.TABLES t \r\nLEFT JOIN information_schema.table_constraints tc ON t.TABLE_NAME = tc.TABLE_NAME\r\n\t\t\t\t\t\t\t\t\t\t\t\t AND t.TABLE_SCHEMA = tc.TABLE_SCHEMA\r\nLEFT JOIN information_schema.key_column_usage k on k.CONSTRAINT_NAME = tc.CONSTRAINT_NAME\r\n\t\t\t\t\t\t\t\t\t\t\t   AND k.TABLE_SCHEMA = tc.TABLE_SCHEMA\r\n\t\t\t\t\t\t\t\t\t\t\t   AND k.TABLE_NAME = tc.TABLE_NAME\r\nWHERE t.table_schema= 'dbo'\r\n  --AND t.table_name='Episodes'\r\n  AND t.TABLE_TYPE = 'BASE TABLE'\r\n  AND tc.constraint_type='PRIMARY KEY'",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "RIOSource",
+                        "type": "DatasetReference"
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "IterateSQLTables",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "LookupTableList",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('LookupTableList').output.value",
+                        "type": "Expression"
+                    },
+                    "activities": [
+                        {
+                            "name": "Copy data",
+                            "type": "Copy",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "SqlServerSource",
+                                    "queryTimeout": "02:00:00",
+                                    "partitionOption": "None"
+                                },
+                                "sink": {
+                                    "type": "SqlServerSink",
+                                    "writeBehavior": "upsert",
+                                    "upsertSettings": {
+                                        "useTempDB": true,
+                                        "keys": {
+                                            "value": "@createArray(item().COLUMN_NAME)",
+                                            "type": "Expression"
+                                        }
+                                    },
+                                    "sqlWriterUseTableLock": false
+                                },
+                                "enableStaging": false
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "RIOSourceWithParameters",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "TableSchema": {
+                                            "value": "@item().TABLE_SCHEMA",
+                                            "type": "Expression"
+                                        },
+                                        "TableName": {
+                                            "value": "@item().TABLE_NAME",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "RIOSink",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "TableName": {
+                                            "value": "@item().TABLE_NAME",
+                                            "type": "Expression"
+                                        },
+                                        "TableSchema": {
+                                            "value": "@item().TABLE_SCHEMA",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ],
+        "parameters": {},
+        "variables": {},
+        "annotations": []
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
