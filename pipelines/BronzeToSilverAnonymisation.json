@@ -1,0 +1,51 @@
+{
+    "name": "BronzeToSilverAnonymisation",
+    "properties": {
+        "activities": [
+            {
+                "name": "Data Brick",
+                "type": "DatabricksNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "notebookPath": "/Shared/shir_bronze_silver_anonymise",
+                    "baseParameters": {
+                        "client_id": {
+                            "value": "@pipeline().parameters.client_id",
+                            "type": "Expression"
+                        },
+                        "client_secret": {
+                            "value": "@pipeline().parameters.client_secret",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                "linkedServiceName": {
+                    "referenceName": "ADBLinkedServiceViaMSI",
+                    "type": "LinkedServiceReference"
+                }
+            }
+        ],
+        "parameters": {
+            "client_id": {
+                "type": "string",
+                "defaultValue": "flowehr-dbks-adls-app-id"
+            },
+            "client_secret": {
+                "type": "string",
+                "defaultValue": "flowehr-dbks-adls-app-secret"
+            }
+        },
+        "variables": {},
+        "annotations": [],
+        "lastPublishTime": "2023-05-15T16:10:08Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
