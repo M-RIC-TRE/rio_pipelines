@@ -1,0 +1,61 @@
+{
+    "name": "RIOIngestionMain",
+    "properties": {
+        "activities": [
+            {
+                "name": "RIO On-Prem Ingestion",
+                "type": "ExecutePipeline",
+                "dependsOn": [],
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "RIOOnPremSHIRIngestion",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "Bronze to Silver Anonymisation",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "RIO Raw to Bronze Move",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "BronzeToSilverAnonymisation",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "RIO Raw to Bronze Move",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "RIO On-Prem Ingestion",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "RIORawToBronze",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            }
+        ],
+        "annotations": []
+    }
+}
