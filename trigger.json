@@ -6,7 +6,7 @@
         "pipelines": [
             {
                 "pipelineReference": {
-                    "referenceName": "RIOOnPremSHIRIngestion",
+                    "referenceName": "RIOIngestionMain",
                     "type": "PipelineReference"
                 }
             }
